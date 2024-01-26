@@ -13,7 +13,7 @@ GENERATOR_HANDLE = "litellm"
 )
 def test_generator(model: str):
     with Steamship.temporary_workspace(profile="steamshipProd") as steamship:
-        litellm = steamship.use_plugin(GENERATOR_HANDLE, config={"model": model})
+        litellm = steamship.use_plugin(GENERATOR_HANDLE, config={})
         file = File.create(
             steamship,
             blocks=[
@@ -30,7 +30,7 @@ def test_generator(model: str):
             ],
         )
 
-        generate_task = litellm.generate(input_file_id=file.id)
+        generate_task = litellm.generate(input_file_id=file.id, options={"model": model})
         generate_task.wait()
         output = generate_task.output
         assert len(output.blocks) == 1

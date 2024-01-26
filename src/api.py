@@ -387,7 +387,7 @@ class LiteLLMPlugin(StreamingGenerator):
         self, request: PluginRequest[RawBlockAndTagPluginInput]
     ) -> InvocableResponse[BlockTypePluginOutput]:
 
-        options = request.data.options
+        options = request.data.options or {}
         self._validate_options(options)
 
         # We return one block per completion-choice we're configured for (config.n)
