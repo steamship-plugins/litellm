@@ -237,7 +237,7 @@ def test_cant_override_env(envreset):
         )
         with pytest.raises(SteamshipError) as e:
             _, _ = run_test_streaming(client, litellm, blocks=[Block(text="yo")], options={"litellm_env": ""})
-        assert "Environment (litellm_env) may not be overridden in options" in str(e)
+        assert "Configured environment (litellm_env) may not be overridden in options" in str(e)
 
 
 # TODO there appears to be a billing problem with at least replicate here, where it reports $0.00.  This is due to
@@ -491,7 +491,7 @@ def test_prepare_messages(envreset):
         )
     ]
 
-    messages = litellm.prepare_messages(blocks=blocks)
+    messages = litellm.prepare_messages(blocks=blocks, options={})
 
     expected_messages = [
         {'role': 'system', 'content': 'You are a helpful AI assistant.\n\nNOTE: Some functions return images, video, and audio files. These multimedia files will be represented in messages as\nUUIDs for Steamship Blocks. When responding directly to a user, you SHOULD print the Steamship Blocks for the images,\nvideo, or audio as follows: `Block(UUID for the block)`.\n\nExample response for a request that generated an image:\nHere is the image you requested: Block(288A2CA1-4753-4298-9716-53C1E42B726B).\n\nOnly use the functions you have been provided with.\n'},
@@ -571,4 +571,4 @@ def test_own_billing(envreset):
         with pytest.raises(SteamshipError) as e:
             run_test_streaming(client, plugin, blocks, options={"litellm_env": ""})
 
-        assert "Environment (litellm_env) may not be overridden in options" in str(e)
+        assert "Configured environment (litellm_env) may not be overridden in options" in str(e)

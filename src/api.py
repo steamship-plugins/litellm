@@ -47,6 +47,9 @@ PLUGIN_HANDLED_KEYS = {"stream", "user", "messages"}
 DEFAULT_MODEL = "gpt-4-0613"
 
 
+USER_ENABLED_PROVIDERS = {"openai"}
+
+
 class BillingCallback:
     def __init__(self):
         self.cost = None
@@ -63,6 +66,7 @@ class BillingCallback:
 
     def usage(self, completion_id: str) -> [UsageReport]:
         assert self.lock.acquire(timeout=BILLING_LOCK_TIMEOUT_SECONDS), "Billing calculation timed out"
+        logging.info(f"Received cost of ${self.cost} for completion id: {completion_id}")
         return [
             UsageReport(
                 operation_type=OperationType.RUN,
@@ -78,7 +82,7 @@ class NoopBilling(BillingCallback):
         pass
 
     def __call__(self, *args, **kwargs):
-        pass
+        logging.info("Computing no billing for response because custom environment was provided.")
 
     def usage(self, completion_id: str) -> [UsageReport]:
         return []
@@ -99,6 +103,13 @@ class LiteLLMPlugin(StreamingGenerator):
         )
         max_retries: int = Field(
             8, description="Maximum number of retries to make when generating."
+        )
+        default_role: str = Field(
+            RoleTag.USER.value,
+            description = "The default role to use for a block that does not have a Tag of kind='role'",
+        )
+        default_system_prompt: str = Field(
+            "", description="System prompt that will be prepended before every request"
         )
 
     @classmethod
@@ -167,7 +178,7 @@ class LiteLLMPlugin(StreamingGenerator):
                 name = tag.name
 
         if role is None:
-            role = options.get("default_role", RoleTag.USER.value)
+            role = self.config.default_role
 
         if role not in ["function", "system", "assistant", "user"]:
             logging.warning(f"unsupported role {role} found in message. skipping...")
@@ -186,10 +197,9 @@ class LiteLLMPlugin(StreamingGenerator):
 
     def prepare_messages(self, blocks: List[Block], options: Dict[str, Any]) -> List[Dict[str, str]]:
         messages = []
-        default_system_prompt = options.get("default_system_prompt")
-        if default_system_prompt:
+        if self.config.default_system_prompt:
             messages.append(
-                {"role": RoleTag.SYSTEM, "content": default_system_prompt}
+                {"role": RoleTag.SYSTEM, "content": self.config.default_system_prompt}
             )
         # TODO: remove is_text check here when can handle image etc. input
         messages.extend(
@@ -243,19 +253,14 @@ class LiteLLMPlugin(StreamingGenerator):
             kwargs = dict(
                 **options,
                 messages=messages,
-                user=user,
                 stream=True,
             )
-
             _, provider, _, _ = litellm.get_llm_provider(model)
-            if provider == "replicate":
-                # TODO This probably can be sidestepped by just using options for this.
-                del kwargs["presence_penalty"]
-                del kwargs["frequency_penalty"]
-                del kwargs["user"]
+            if provider in USER_ENABLED_PROVIDERS:
+                kwargs["user"] = user
 
             logging.info("calling litellm.completion",
-                         extra={"messages": messages, "functions": functions})
+                         extra={"model": model, "messages": messages, "functions": functions})
             return litellm.completion(**kwargs)
 
         litellm.success_callback = [billing_callback]
@@ -334,9 +339,10 @@ class LiteLLMPlugin(StreamingGenerator):
         return moderation.results[0].flagged
 
     def _validate_options(self, options: Dict[str, Any]):
+        # TODO PR: Block Replicate here?  If delegated user isn't steamship?  Because of known billing bug
         if not options:
             return
-        invalid_keys = PLUGIN_HANDLED_KEYS - options.keys()
+        invalid_keys = PLUGIN_HANDLED_KEYS.intersection(options.keys())
         if invalid_keys:
             raise SteamshipError("The following keys are handled entirely by the plugin and may not be provided as "
                                  "options: " + (', '.join(invalid_keys)))
@@ -353,7 +359,7 @@ class LiteLLMPlugin(StreamingGenerator):
         options = request.data.options
         self._validate_options(options)
         messages = self.prepare_messages(request.data.blocks, options)
-        if options.get("moderate_output", False) and self._flagged(messages):
+        if options.get("moderate_output", True) and self._flagged(messages):
             # Before we bail, we have to mark the blocks as failed -- otherwise they will remain forever in the `streaming` state
             try:
                 if request.data.output_blocks:
