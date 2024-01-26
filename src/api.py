@@ -151,7 +151,7 @@ class LiteLLMPlugin(StreamingGenerator):
         for k, v in LiteLLMPlugin.get_envs(env_config).items():
             os.environ[k] = v
 
-    def prepare_message(self, block: Block, options: Dict[str, Any]) -> Optional[Dict[str, str]]:
+    def prepare_message(self, block: Block) -> Optional[Dict[str, str]]:
         role = None
         name = None
         function_selection = False
@@ -195,7 +195,7 @@ class LiteLLMPlugin(StreamingGenerator):
 
         return {"role": role, "content": block.text}
 
-    def prepare_messages(self, blocks: List[Block], options: Dict[str, Any]) -> List[Dict[str, str]]:
+    def prepare_messages(self, blocks: List[Block]) -> List[Dict[str, str]]:
         messages = []
         if self.config.default_system_prompt:
             messages.append(
@@ -205,7 +205,7 @@ class LiteLLMPlugin(StreamingGenerator):
         messages.extend(
             [
                 msg for msg in
-                (self.prepare_message(block, options) for block in blocks if block.text is not None and block.text != "")
+                (self.prepare_message(block) for block in blocks if block.text is not None and block.text != "")
                 if msg is not None
             ]
         )
@@ -338,10 +338,11 @@ class LiteLLMPlugin(StreamingGenerator):
         moderation = litellm.moderation(input=input_text)
         return moderation.results[0].flagged
 
-    def _validate_options(self, options: Dict[str, Any]):
+    @staticmethod
+    def _validate_options(options: Dict[str, Any]) -> dict:
         # TODO PR: Block Replicate here?  If delegated user isn't steamship?  Because of known billing bug
         if not options:
-            return
+            return {}
         invalid_keys = PLUGIN_HANDLED_KEYS.intersection(options.keys())
         if invalid_keys:
             raise SteamshipError("The following keys are handled entirely by the plugin and may not be provided as "
@@ -350,15 +351,15 @@ class LiteLLMPlugin(StreamingGenerator):
             raise SteamshipError("Configured environment (litellm_env) may not be overridden in options")
         if options.get('n', 1) > 1:
             raise SteamshipError("There is currently a known bug in implementation with this plugin where n > 1.")
+        return options
 
     def run(
         self, request: PluginRequest[RawBlockAndTagPluginInputWithPreallocatedBlocks]
     ) -> InvocableResponse[StreamCompletePluginOutput]:
         """Run the text generator against all the text, combined"""
 
-        options = request.data.options
-        self._validate_options(options)
-        messages = self.prepare_messages(request.data.blocks, options)
+        options = self._validate_options(request.data.options)
+        messages = self.prepare_messages(request.data.blocks)
         if options.get("moderate_output", True) and self._flagged(messages):
             # Before we bail, we have to mark the blocks as failed -- otherwise they will remain forever in the `streaming` state
             try:
@@ -387,8 +388,7 @@ class LiteLLMPlugin(StreamingGenerator):
         self, request: PluginRequest[RawBlockAndTagPluginInput]
     ) -> InvocableResponse[BlockTypePluginOutput]:
 
-        options = request.data.options or {}
-        self._validate_options(options)
+        options = self._validate_options(request.data.options)
 
         # We return one block per completion-choice we're configured for (config.n)
         # This expectation is coded into the generate_with_retry method
