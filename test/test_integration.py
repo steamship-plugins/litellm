@@ -30,7 +30,8 @@ def test_generator(model: str):
             ],
         )
 
-        generate_task = litellm.generate(input_file_id=file.id, options={"model": model})
+        options = {"model": model} if model else {}
+        generate_task = litellm.generate(input_file_id=file.id, options=options)
         generate_task.wait()
         output = generate_task.output
         assert len(output.blocks) == 1

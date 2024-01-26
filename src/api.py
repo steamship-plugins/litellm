@@ -106,7 +106,7 @@ class LiteLLMPlugin(StreamingGenerator):
         )
         default_role: str = Field(
             RoleTag.USER.value,
-            description = "The default role to use for a block that does not have a Tag of kind='role'",
+            description="The default role to use for a block that does not have a Tag of kind='role'",
         )
         default_system_prompt: str = Field(
             "", description="System prompt that will be prepended before every request"
