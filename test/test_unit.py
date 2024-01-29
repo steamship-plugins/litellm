@@ -237,7 +237,7 @@ def test_cant_override_env(envreset):
         )
         with pytest.raises(SteamshipError) as e:
             _, _ = run_test_streaming(client, litellm, blocks=[Block(text="yo")], options={"litellm_env": ""})
-        assert "Environment (litellm_env) may not be overridden in options" in str(e)
+        assert "Configured environment (litellm_env) may not be overridden in options" in str(e)
 
 
 # TODO there appears to be a billing problem with at least replicate here, where it reports $0.00.  This is due to
@@ -571,4 +571,4 @@ def test_own_billing(envreset):
         with pytest.raises(SteamshipError) as e:
             run_test_streaming(client, plugin, blocks, options={"litellm_env": ""})
 
-        assert "Environment (litellm_env) may not be overridden in options" in str(e)
+        assert "Configured environment (litellm_env) may not be overridden in options" in str(e)

@@ -1,7 +1,7 @@
 {
 	"type": "plugin",
 	"handle": "litellm",
-	"version": "0.0.4",
+	"version": "0.0.6",
 	"description": "",
 	"author": "steamship",
 	"entrypoint": "Unused",
@@ -21,53 +21,13 @@
 	"configTemplate": {
 		"litellm_env": {
 			"type": "string",
-			"description": "LiteLLM provider environment, in the form <key>:<value>[;<key>:<value>...].  See LiteLLM documentation for supported variables.  Params must end with _API_KEY, and in the case of 'AZURE', _API_VERSION, or _API_BASE",
+			"description": "LiteLLM provider environment, in the form <key>:<value>[;<key>:<value>...].  See LiteLLM documentation for supported variables.  Params must end with _API_KEY, and in the case of 'AZURE', _API_VERSION, or _API_BASE.  Leaving this empty uses Steamship's environment and thus Steamship billing.",
 			"default": ""
-		},
-		"max_tokens": {
-			"type": "number",
-			"description": "The maximum number of tokens to generate per request. Can be overridden in runtime options.",
-			"default": 256
-		},
-		"model": {
-			"type": "string",
-			"description": "The model name to use. Can be a pre-existing fine-tuned model.",
-			"default": "gpt-4-0613"
-		},
-		"temperature": {
-			"type": "number",
-			"description": "Controls randomness. Lower values produce higher likelihood / more predictable results; higher values produce more variety. Values between 0-1.",
-			"default": 0.4
-		},
-		"top_p": {
-			"type": "number",
-			"description": "Controls the nucleus sampling, where the model considers the results of the tokens with top_p probability mass. Values between 0-1.",
-			"default": 1
-		},
-		"presence_penalty": {
-			"type": "number",
-			"description": "Control how likely the model will reuse words. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics. Number between -2.0 and 2.0.",
-			"default": 0
-		},
-		"frequency_penalty": {
-			"type": "number",
-			"description": "Control how likely the model will reuse words. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim. Number between -2.0 and 2.0.",
-			"default": 0
-		},
-		"moderate_output": {
-			"type": "boolean",
-			"description": "Pass the generated output back through OpenAI's moderation endpoint and throw an exception if flagged.",
-			"default": true
 		},
 		"max_retries": {
 			"type": "number",
 			"description": "Maximum number of retries to make when generating.",
 			"default": 8
-		},
-		"n": {
-			"type": "number",
-			"description": "How many completions to generate for each prompt.",
-			"default": 1
 		},
 		"default_role": {
 			"type": "string",
